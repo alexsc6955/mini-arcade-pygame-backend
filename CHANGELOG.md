@@ -10,3 +10,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 - Internal changes only.
 
+## [1.0.0] - 2026-02-05
+
+- Internal changes only.
+
