@@ -69,13 +69,16 @@ class RenderPort:
         :param h: The height of the clipping rectangle.
         :type h: int
         """
-        # IMPORTANT: the pipeline passes viewport_w/h and assumes viewport transform has been applied.
+        # IMPORTANT: the pipeline passes viewport_w/h and assumes viewport
+        # transform has been applied.
         self._w.screen.set_clip(pygame.Rect(int(x), int(y), int(w), int(h)))
 
     def clear_clip_rect(self):
         """Clear the clipping rectangle."""
         self._w.screen.set_clip(None)
 
+    # Justification: Many arguments needed for drawing
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def draw_rect(self, x: int, y: int, w: int, h: int, color=(255, 255, 255)):
         """
         Draw a filled rectangle.

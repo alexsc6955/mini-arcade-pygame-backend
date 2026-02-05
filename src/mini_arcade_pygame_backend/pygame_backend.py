@@ -16,6 +16,8 @@ from mini_arcade_pygame_backend.ports.text import TextPort
 from mini_arcade_pygame_backend.ports.window import WindowPort
 
 
+# Justification: Many instance attributes for ports
+# pylint: disable=too-many-instance-attributes
 class PygameBackend:
     """
     Pygame backend for mini-arcade.
@@ -93,11 +95,22 @@ class PygameBackend:
     def set_viewport_transform(
         self, offset_x: int, offset_y: int, scale: float
     ):
+        """
+        Set the viewport transform.
+
+        :param offset_x: The x offset.
+        :type offset_x: int
+        :param offset_y: The y offset.
+        :type offset_y: int
+        :param scale: The scale factor.
+        :type scale: float
+        """
         self._vp.ox = int(offset_x)
         self._vp.oy = int(offset_y)
         self._vp.s = float(scale)
 
     def clear_viewport_transform(self):
+        """Clear the viewport transform (reset to defaults)."""
         self._vp.ox = 0
         self._vp.oy = 0
         self._vp.s = 1.0

@@ -76,6 +76,8 @@ class TextPort:
         s = self._vp.s or 1.0
         return int(round(w_px / s)), int(round(h_px / s))
 
+    # Justification: Many arguments needed for text drawing
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def draw(
         self,
         x: int,
@@ -98,7 +100,7 @@ class TextPort:
         :param font_size: The font size to use for drawing.
         :type font_size: int | None
         """
-        r, g, b, a = rgba(color)
+        r, g, b, _ = rgba(color)
         sx, sy = self._vp.map_xy(int(x), int(y))
 
         scaled_size = (
