@@ -143,7 +143,8 @@ class RenderPort:
         :type h: int
         :param data: The pixel data in RGBA format.
         :type data: bytes | bytearray | memoryview
-        :param pitch: The number of bytes per row (including padding). If -1, rows are assumed to be tightly packed.
+        :param pitch: The number of bytes per row (including padding).
+            If -1, rows are assumed to be tightly packed.
         :type pitch: int
         :return: The ID of the created texture.
         :rtype: int
