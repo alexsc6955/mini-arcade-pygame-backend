@@ -33,6 +33,8 @@ class RenderPort:
         self._w = window
         self._vp = vp
         self._clear = rgba(background_color)
+        self._next_tex_id: int = 1
+        self._textures: dict[int, pygame.Surface] = {}
 
     def set_clear_color(self, r: int, g: int, b: int):
         """
@@ -124,3 +126,128 @@ class RenderPort:
         sx1, sy1 = self._vp.map_xy(int(x1), int(y1))
         sx2, sy2 = self._vp.map_xy(int(x2), int(y2))
         pygame.draw.line(self._w.screen, (r, g, b), (sx1, sy1), (sx2, sy2))
+
+    def create_texture_rgba(
+        self,
+        w: int,
+        h: int,
+        data: bytes | bytearray | memoryview,
+        pitch: int = -1,
+    ) -> int:
+        """
+        Create a texture from RGBA pixel data.
+
+        :param w: The width of the texture.
+        :type w: int
+        :param h: The height of the texture.
+        :type h: int
+        :param data: The pixel data in RGBA format.
+        :type data: bytes | bytearray | memoryview
+        :param pitch: The number of bytes per row (including padding). If -1, rows are assumed to be tightly packed.
+        :type pitch: int
+        :return: The ID of the created texture.
+        :rtype: int
+        """
+        w = int(w)
+        h = int(h)
+        if pitch <= 0:
+            pitch = w * 4
+
+        mv = memoryview(data)
+        needed = h * pitch
+        if mv.nbytes < needed:
+            raise ValueError(
+                f"create_texture_rgba: buffer too small ({mv.nbytes}) for h*pitch ({needed})"
+            )
+
+        # Fast path: tightly packed RGBA rows
+        if pitch == w * 4:
+            # frombuffer shares memory; copy() to detach from Python buffer lifetime
+            surf = pygame.image.frombuffer(
+                mv[:needed], (w, h), "RGBA"
+            ).convert_alpha()
+        else:
+            # Slow path: repack rows (supports padded pitch)
+            packed = bytearray(w * h * 4)
+            for row in range(h):
+                src0 = row * pitch
+                src1 = src0 + (w * 4)
+                dst0 = row * (w * 4)
+                dst1 = dst0 + (w * 4)
+                packed[dst0:dst1] = mv[src0:src1]
+            surf = pygame.image.frombuffer(
+                bytes(packed), (w, h), "RGBA"
+            ).convert_alpha()
+
+        tex_id = self._next_tex_id
+        self._next_tex_id += 1
+        self._textures[tex_id] = surf
+        return tex_id
+
+    def draw_texture(self, tex: int, x: int, y: int, w: int, h: int):
+        """
+        Draw a texture at the specified position and size.
+
+        :param tex: The ID of the texture to draw.
+        :type tex: int
+        :param x: The x-coordinate of the top-left corner where the texture should be drawn.
+        :type x: int
+        :param y: The y-coordinate of the top-left corner where the texture should be drawn.
+        :type y: int
+        :param w: The width to draw the texture.
+        :type w: int
+        :param h: The height to draw the texture.
+        :type h: int
+        """
+        surf = self._textures.get(int(tex))
+        if surf is None:
+            return
+
+        sx, sy = self._vp.map_xy(int(x), int(y))
+        sw, sh = self._vp.map_wh(int(w), int(h))
+
+        if sw <= 0 or sh <= 0:
+            return
+
+        if surf.get_width() != sw or surf.get_height() != sh:
+            scaled = pygame.transform.scale(surf, (sw, sh))
+            self._w.screen.blit(scaled, (sx, sy))
+        else:
+            self._w.screen.blit(surf, (sx, sy))
+
+    def destroy_texture(self, tex: int) -> None:
+        """
+        Destroy a texture, freeing associated resources.
+
+        :param tex: The ID of the texture to destroy.
+        :type tex: int
+        """
+        self._textures.pop(int(tex), None)
+
+    def draw_texture_tiled_y(
+        self, tex_id: int, x: int, y: int, w: int, h: int
+    ):
+        """
+        Draw a texture repeated vertically to fill (w,h).
+        Assumes you can resolve tex_id -> pygame.Surface, and supports scaling width.
+        """
+        surf = self._textures[tex_id]  # adapt to your texture store
+        # Scale the tile to target width, keep tile height
+        tile_h = surf.get_height()
+        tile = pygame.transform.scale(surf, (int(w), int(tile_h)))
+
+        cur_y = int(y)
+        end_y = int(y + h)
+
+        while cur_y < end_y:
+            remaining = end_y - cur_y
+            if remaining >= tile_h:
+                self._w.screen.blit(tile, (int(x), cur_y))
+                cur_y += tile_h
+            else:
+                # partial tile at the end
+                partial = tile.subsurface(
+                    pygame.Rect(0, 0, int(w), int(remaining))
+                )
+                self._w.screen.blit(partial, (int(x), cur_y))
+                break
